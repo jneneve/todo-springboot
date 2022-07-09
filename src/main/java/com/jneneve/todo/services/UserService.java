@@ -14,17 +14,17 @@ import com.jneneve.todo.repositories.UserRepository;
 import com.jneneve.todo.services.exceptions.ResourceFoundException;
 import com.jneneve.todo.services.exceptions.ResourceNotFoundException;
 
+import lombok.AllArgsConstructor;
+
+@AllArgsConstructor
 @Service
 public class UserService {
 
-	@Autowired
-	private UserRepository userRepository;
+	private final UserRepository userRepository;
 
-	@Autowired
-	private TaskRepository taskRepository;
+	private final TaskRepository taskRepository;
 
-	@Autowired
-	private EmailSenderService emailSenderService;
+	private final EmailSenderService emailSenderService;
 
 	public List<User> findAll() {
 		return userRepository.findAll();
