@@ -1,10 +1,7 @@
 package com.jneneve.todo.services;
 
 import java.util.List;
-import java.util.Optional;
-import java.util.stream.Collectors;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import com.jneneve.todo.entities.Task;
@@ -26,93 +23,88 @@ public class UserService {
 
 	private final EmailSenderService emailSenderService;
 
-	public List<User> findAll() {
+	public List<User> getAllUsers() {
 		return userRepository.findAll();
 	}
 
-	public User findById(Long id) {
-		Optional<User> user = userRepository.findById(id);
-		if (!user.isPresent()) {
+	public User getUser(Long id) {
+		if (!userRepository.existsById(id)) {
 			throw new ResourceNotFoundException("User of id " + id + " not found.");
 		}
-		return user.get();
+		return userRepository.findById(id).get();
 	}
 
-	public User insert(User obj) {
-		Optional<User> user = userRepository.findByEmail(obj.getEmail());
-		if (user.isPresent()) {
-			throw new ResourceNotFoundException("An user with this email has already been created.");
+	public User addUser(User obj) {
+		Boolean existsEmail = userRepository.findByEmail(obj.getEmail());
+		if (existsEmail) {
+			throw new ResourceFoundException(
+					"An user with this email " + obj.getEmail() + " has already been created.");
 		}
 		return userRepository.save(obj);
 	}
 
-	public void delete(Long id) {
-		Optional<User> user = userRepository.findById(id);
-		if (!user.isPresent()) {
+	public void deleteUser(Long id) {
+		if (!userRepository.existsById(id)) {
 			throw new ResourceNotFoundException("User of id " + id + " not found.");
 		}
 		userRepository.deleteById(id);
 	}
 
-	public User update(Long id, User obj) {
-		Optional<User> user = userRepository.findById(id);
-		if (!user.isPresent()) {
+	public User updateUser(Long id, User obj) {
+		if (!userRepository.existsById(id)) {
 			throw new ResourceNotFoundException("User of id " + id + " not found.");
 		}
 
-		User userRecord = user.get();
+		User user = userRepository.findById(id).get();
 
-		userRecord.setName(obj.getName());
-
-		if (!userRecord.getEmail().equals(obj.getEmail())) {
-			user = userRepository.findByEmail(obj.getEmail());
-			if (user.isPresent())
-				throw new ResourceFoundException("An user with this email has already been created.");
-			userRecord.setEmail(obj.getEmail());
+		user.setName(obj.getName());
+		Boolean existsEmail = userRepository.findByEmail(obj.getEmail());
+		if (existsEmail) {
+			throw new ResourceFoundException(
+					"An user with this email " + user.getEmail() + " has already been created.");
 		}
+		user.setEmail(obj.getEmail());
+		user.setJobTitle(obj.getJobTitle());
 
-		userRecord.setEmail(obj.getEmail());
-		userRecord.setJobTitle(obj.getJobTitle());
-
-		return userRepository.save(userRecord);
+		return userRepository.save(user);
 	}
 
-	public User addTask(Long id, Task obj) {
-		Optional<User> user = userRepository.findById(id);
-		if (!user.isPresent()) {
-			throw new ResourceNotFoundException("User of id " + id + " not found.");
+	public User addTaskToUser(Long idUser, Long idTask) {
+		if (!userRepository.existsById(idUser)) {
+			throw new ResourceNotFoundException("User of id " + idUser + " not found.");
 		}
+		User user = userRepository.findById(idUser).get();
 
-		User userRecord = user.get();
+		if (!taskRepository.existsById(idTask)) {
+			throw new ResourceNotFoundException("Task of id " + idTask + " not found.");
+		}
+		Task task = taskRepository.findById(idTask).get();
 
-		Task taskExists = taskRepository.findById(obj.getId()).orElseThrow(() -> new IllegalArgumentException());
-
-		List<Task> taskRecord = userRecord.getTasks().stream().filter(task -> task.getId().equals(taskExists.getId()))
-				.collect(Collectors.toList());
-		if (!taskRecord.isEmpty()) {
+		Boolean existsTask = user.getTasks().stream().anyMatch(t -> t.getId().equals(idTask));
+		if (existsTask) {
 			throw new ResourceFoundException("The task has already been add.");
 		}
 
-		userRecord.getTasks().add(obj);
+		user.getTasks().add(task);
 
-		emailSenderService.sendEmail(userRecord, obj);
+		emailSenderService.sendEmail(user, task);
 
-		return userRepository.save(userRecord);
+		return userRepository.save(user);
 	}
 
-	public void deleteTask(Long user_id, Long task_id) {
-		Optional<User> user = userRepository.findById(user_id);
-		if (!user.isPresent()) {
-			throw new ResourceNotFoundException("User of id " + user_id + " not found.");
+	public void deleteTaskFromUser(Long idUser, Long idTask) {
+		if (!userRepository.existsById(idUser)) {
+			throw new ResourceNotFoundException("User of id " + idUser + " not found.");
 		}
+		User user = userRepository.findById(idUser).get();
 
-		User userRecord = user.get();
+		if (!taskRepository.existsById(idTask)) {
+			throw new ResourceNotFoundException("Task of id " + idTask + " not found.");
+		}
+		Task task = taskRepository.findById(idTask).get();
 
-		Task task = taskRepository.findById(task_id)
-				.orElseThrow(() -> new ResourceNotFoundException("Task of id " + task_id + " not found."));
+		user.getTasks().remove(task);
 
-		userRecord.getTasks().remove(task);
-
-		userRepository.save(userRecord);
+		userRepository.save(user);
 	}
 }
