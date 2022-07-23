@@ -1,12 +1,12 @@
 package com.jneneve.todo.services;
 
 import java.util.List;
-import java.util.Optional;
 
 import org.springframework.stereotype.Service;
 
 import com.jneneve.todo.entities.Task;
 import com.jneneve.todo.repositories.TaskRepository;
+import com.jneneve.todo.services.exceptions.ResourceFoundException;
 import com.jneneve.todo.services.exceptions.ResourceNotFoundException;
 
 import lombok.AllArgsConstructor;
@@ -15,44 +15,47 @@ import lombok.AllArgsConstructor;
 @Service
 public class TaskService {
 
-	private final TaskRepository repository;
+	private final TaskRepository taskRepository;
 
-	public List<Task> findAll() {
-		return repository.findAll();
+	public List<Task> getAllTasks() {
+		return taskRepository.findAll();
 	}
 
-	public Task findById(Long id) {
-		Optional<Task> task = repository.findById(id);
-		if (!task.isPresent()) {
+	public Task getTask(Long id) {
+		if (!taskRepository.existsById(id)) {
 			throw new ResourceNotFoundException("Task of id " + id + " not found.");
 		}
-		return task.get();
+		return taskRepository.findById(id).get();
 	}
 
-	public Task insert(Task obj) {
-		return repository.save(obj);
+	public Task addTask(Task obj) {
+		return taskRepository.save(obj);
 	}
 
-	public void delete(Long id) {
-		Optional<Task> task = repository.findById(id);
-		if (!task.isPresent()) {
+	public void deleteTask(Long id) {
+		if (!taskRepository.existsById(id)) {
 			throw new ResourceNotFoundException("Task of id " + id + " not found.");
 		}
-		repository.deleteById(id);
-	}
+		Task task = taskRepository.findById(id).get();
 
-	public Task update(Long id, Task obj) {
-		Optional<Task> task = repository.findById(id);
-		if (!task.isPresent()) {
-			throw new ResourceNotFoundException("Task of id " + id + " not found.");
+		if (!task.getUsers().isEmpty()) {
+			throw new ResourceFoundException("Task of id " + id + " is associated with one or more users.");
 		}
 
-		Task taskRecord = task.get();
-		taskRecord.setTitle(obj.getTitle());
-		taskRecord.setDescription(obj.getDescription());
-		taskRecord.setTaskStatus(obj.getTaskStatus());
-		taskRecord.setClosedDate(obj.getClosedDate());
+		taskRepository.deleteById(id);
+	}
 
-		return repository.save(taskRecord);
+	public Task updateTask(Long id, Task obj) {
+		if (!taskRepository.existsById(id)) {
+			throw new ResourceNotFoundException("Task of id " + id + " not found.");
+		}
+		Task task = taskRepository.findById(id).get();
+
+		task.setTitle(obj.getTitle());
+		task.setDescription(obj.getDescription());
+		task.setTaskStatus(obj.getTaskStatus());
+		task.setClosedDate(obj.getClosedDate());
+
+		return taskRepository.save(task);
 	}
 }
